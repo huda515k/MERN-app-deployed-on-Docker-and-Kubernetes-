@@ -13,17 +13,17 @@ jobs:
     - name: Ensure Minikube is running
       shell: powershell
       run: |
-        minikube status || minikube start --driver=docker
+        if (-not (minikube status)) { minikube start --driver=docker }
         minikube addons enable ingress
 
     - name: Set up Docker for Minikube
-      shell: "C:\\Program Files\\PowerShell\\7\\pwsh.exe"  # Using full path to pwsh
+      shell: powershell
       run: |
         minikube docker-env | Invoke-Expression
-        docker ps  # Verify connection
+        docker ps
 
     - name: Build and Push Images
-      shell: cmd  # Using cmd for better compatibility
+      shell: cmd
       run: |
         docker build -t hudanyazee/frontend:latest ./frontend
         docker build -t hudanyazee/backend:latest ./backend
@@ -32,12 +32,12 @@ jobs:
         docker push hudanyazee/backend:latest
 
     - name: Create Namespace if not exists
-      shell: cmd
+      shell: powershell
       run: |
         kubectl create namespace mern-app --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Deploy to Kubernetes
-      shell: cmd
+      shell: powershell
       run: |
         kubectl apply -f k8s/mongodb/ -n mern-app
         kubectl apply -f k8s/backend/ -n mern-app
