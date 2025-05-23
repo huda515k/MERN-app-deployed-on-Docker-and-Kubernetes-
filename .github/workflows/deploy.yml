@@ -10,32 +10,34 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Docker for Minikube on Windows
-      shell: pwsh
+    - name: Ensure Minikube is running
+      shell: powershell
       run: |
-        $envVars = & minikube -p minikube docker-env --shell powershell
-        $envText = $envVars -join "`n"
-        Invoke-Expression $envText
+        minikube status || minikube start --driver=docker
+        minikube addons enable ingress
 
-    - name: Build Frontend Image
-      run: docker build -t hudanyazee/frontend:latest ./frontend
-
-    - name: Build Backend Image
-      run: docker build -t hudanyazee/backend:latest ./backend
-
-    - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-    - name: Push Images
+    - name: Set up Docker for Minikube
+      shell: "C:\\Program Files\\PowerShell\\7\\pwsh.exe"  # Using full path to pwsh
       run: |
+        minikube docker-env | Invoke-Expression
+        docker ps  # Verify connection
+
+    - name: Build and Push Images
+      shell: cmd  # Using cmd for better compatibility
+      run: |
+        docker build -t hudanyazee/frontend:latest ./frontend
+        docker build -t hudanyazee/backend:latest ./backend
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
         docker push hudanyazee/frontend:latest
         docker push hudanyazee/backend:latest
 
     - name: Create Namespace if not exists
+      shell: cmd
       run: |
-        kubectl get namespace mern-app || kubectl create namespace mern-app
-        
+        kubectl create namespace mern-app --dry-run=client -o yaml | kubectl apply -f -
+
     - name: Deploy to Kubernetes
+      shell: cmd
       run: |
         kubectl apply -f k8s/mongodb/ -n mern-app
         kubectl apply -f k8s/backend/ -n mern-app
