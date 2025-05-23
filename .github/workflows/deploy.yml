@@ -1,4 +1,5 @@
 name: Build and Deploy
+
 on:
   push:
     branches: [main]
@@ -6,36 +7,82 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
+
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v3
+
+    - name: Check Minikube Version
+      shell: pwsh
+      run: |
+        try {
+          minikube version
+        } catch {
+          Write-Error "Minikube is not installed or not in PATH."
+          exit 1
+        }
 
     - name: Set up Docker for Minikube on Windows
       shell: pwsh
       run: |
-        $envVars = & minikube -p minikube docker-env --shell powershell
-        $envText = $envVars -join "`n"
-        Invoke-Expression $envText
+        try {
+          $envVars = & minikube -p minikube docker-env --shell powershell
+          if (-not $envVars) {
+            throw "Failed to get docker-env variables from minikube."
+          }
+          $envText = $envVars -join "`n"
+          Invoke-Expression $envText
+        } catch {
+          Write-Error "Error setting up Docker environment for Minikube: $_"
+          exit 1
+        }
+
+    - name: Docker Info
+      shell: pwsh
+      run: |
+        docker info
+
+    - name: Kubernetes Context
+      shell: pwsh
+      run: |
+        try {
+          $context = kubectl config current-context
+          Write-Output "Current K8s context: $context"
+        } catch {
+          Write-Error "Kubernetes is not configured properly."
+          exit 1
+        }
 
     - name: Build Frontend Image
-      run: docker build -t hudanyazee/frontend:latest ./frontend
+      shell: pwsh
+      run: |
+        docker build -t hudanyazee/frontend:latest ./frontend
 
     - name: Build Backend Image
-      run: docker build -t hudanyazee/backend:latest ./backend
+      shell: pwsh
+      run: |
+        docker build -t hudanyazee/backend:latest ./backend
 
     - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      shell: pwsh
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
     - name: Push Images
+      shell: pwsh
       run: |
         docker push hudanyazee/frontend:latest
         docker push hudanyazee/backend:latest
 
-    - name: Create Namespace if not exists
+    - name: Create Namespace if Not Exists
+      shell: pwsh
       run: |
-        kubectl get namespace mern-app || kubectl create namespace mern-app
-        
+        if (-not (kubectl get namespace mern-app -o name 2>$null)) {
+          kubectl create namespace mern-app
+        }
+
     - name: Deploy to Kubernetes
+      shell: pwsh
       run: |
         kubectl apply -f k8s/mongodb/ -n mern-app
         kubectl apply -f k8s/backend/ -n mern-app
