@@ -5,31 +5,36 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: windows-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Docker for Minikube on Windows
-      shell: pwsh
+    - name: Set up Minikube
+      shell: cmd
       run: |
-        $envVars = & minikube -p minikube docker-env --shell powershell
-        $envText = $envVars -join "`n"
-        Invoke-Expression $envText
+        choco install minikube -y
+        minikube start
+        minikube addons enable ingress
+
+    - name: Set up Docker for Minikube
+      shell: cmd
+      run: |
+        @FOR /f "tokens=*" %i IN ('minikube -p minikube docker-env --shell cmd') DO @%i
 
     - name: Build Frontend Image
-      run: docker build -t umer515k/frontend:latest ./frontend
+      run: docker build -t hudanyazee/frontend:latest ./frontend
 
     - name: Build Backend Image
-      run: docker build -t umer515k/backend:latest ./backend
+      run: docker build -t hudanyazee/backend:latest ./backend
 
     - name: Login to Docker Hub
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
     - name: Push Images
       run: |
-        docker push umer515k/frontend:latest
-        docker push umer515k/backend:latest
+        docker push hudanyazee/frontend:latest
+        docker push hudanyazee/backend:latest
 
     - name: Create Namespace if not exists
       run: |
