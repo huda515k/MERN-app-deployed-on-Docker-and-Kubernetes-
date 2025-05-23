@@ -5,22 +5,17 @@ on:
 
 jobs:
   deploy:
-    runs-on: windows-latest
+    runs-on: self-hosted
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Install Minikube
-      shell: cmd
+    - name: Set up Docker for Minikube on Windows
+      shell: pwsh
       run: |
-        choco install minikube -y
-        minikube start
-        minikube addons enable ingress
-
-    - name: Set up Docker for Minikube
-      shell: cmd
-      run: |
-        @FOR /f "tokens=*" %i IN ('minikube -p minikube docker-env --shell cmd') DO @%i
+        $envVars = & minikube -p minikube docker-env --shell powershell
+        $envText = $envVars -join "`n"
+        Invoke-Expression $envText
 
     - name: Build Frontend Image
       run: docker build -t hudanyazee/frontend:latest ./frontend
