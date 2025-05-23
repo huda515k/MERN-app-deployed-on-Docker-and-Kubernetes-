@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MERN Task Manager
 
 A MERN application for basic tasks management.
@@ -191,3 +192,7 @@ Inside backend folder:
 
 - Email: aayush5521186@gmail.com
 - Linkedin: https://www.linkedin.com/in/aayush12/
+=======
+# MERN-app-deployed-on-Docker-and-Kubernetes-
+MERN app that has been deployed on Docker, Kubernetes and automated via Github Actions
+>>>>>>> cc96e5f9abfd1d0ac85a9c7b9f092d2ea9a029a6
